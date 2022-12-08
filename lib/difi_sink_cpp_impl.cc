@@ -120,6 +120,25 @@ namespace gr {
         pack_u64(&d_context_raw[difi::CONTEXT_PACKET_ALT_OFFSETS[idx++]], data_payload_format);
 
       }
+      else if (context_pack_size == 84)// this check is a work around for a non-compliant Kratos SNNB @ 1.7.5
+      {
+        pack_u32(&d_context_raw[difi::CONTEXT_PACKET_KRATOS_SNNB_OFFSETS[idx++]], 0);
+        pack_u64(&d_context_raw[difi::CONTEXT_PACKET_KRATOS_SNNB_OFFSETS[idx++]], 0);
+        pack_u32(&d_context_raw[difi::CONTEXT_PACKET_KRATOS_SNNB_OFFSETS[idx++]], 0xB9A18000u);
+        //pack_u32(&d_context_raw[difi::CONTEXT_PACKET_KRATOS_SNNB_OFFSETS[idx++]], 0x64u);
+        pack_u64(&d_context_raw[difi::CONTEXT_PACKET_KRATOS_SNNB_OFFSETS[idx++]], to_vita_bw);
+        pack_u64(&d_context_raw[difi::CONTEXT_PACKET_KRATOS_SNNB_OFFSETS[idx++]], to_vita_if_ref_freq);
+        pack_u64(&d_context_raw[difi::CONTEXT_PACKET_KRATOS_SNNB_OFFSETS[idx++]], to_vita_rf_ref_freq);
+        //pack_u64(&d_context_raw[difi::CONTEXT_PACKET_KRATOS_SNNB_OFFSETS[idx++]], to_vita_if_band_offset);
+        pack_u32(&d_context_raw[difi::CONTEXT_PACKET_KRATOS_SNNB_OFFSETS[idx++]], to_vita_ref_level);
+        pack_u32(&d_context_raw[difi::CONTEXT_PACKET_KRATOS_SNNB_OFFSETS[idx++]], to_vita_gain);
+        pack_u64(&d_context_raw[difi::CONTEXT_PACKET_KRATOS_SNNB_OFFSETS[idx++]], to_vita_samp_rate);
+        //pack_u64(&d_context_raw[difi::CONTEXT_PACKET_KRATOS_SNNB_OFFSETS[idx++]], to_vita_delay);
+        //pack_u32(&d_context_raw[difi::CONTEXT_PACKET_KRATOS_SNNB_OFFSETS[idx++]], d_full);
+        pack_u32(&d_context_raw[difi::CONTEXT_PACKET_KRATOS_SNNB_OFFSETS[idx++]], state_and_event_id);
+        pack_u64(&d_context_raw[difi::CONTEXT_PACKET_KRATOS_SNNB_OFFSETS[idx++]], data_payload_format);
+
+      }     
       else
       {
         pack_u32(&d_context_raw[difi::CONTEXT_PACKET_OFFSETS[idx++]], 0);

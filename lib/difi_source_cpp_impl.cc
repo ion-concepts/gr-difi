@@ -275,13 +275,39 @@ namespace gr {
         pmt_dict = pmt::dict_add(pmt_dict, pmt::intern("data_packet_payload_format"), pmt::from_uint64(context.payload_format));
         pmt_dict = pmt::dict_add(pmt_dict, pmt::intern("raw"), pmt::init_s8vector(size_gotten, &d_packet_buffer[0]));
       }
+      else if (size_gotten == 84)
+      {
+        // Non DIFI compliant context extension packet format used by Kratos SNNB in 1.7.5
+        unpack_context_kratos_snnb(context);
+        pmt_dict = pmt::dict_add(pmt_dict, pmt::intern("header"), pmt::from_long(header.header));
+        pmt_dict = pmt::dict_add(pmt_dict, pmt::intern("stream_num"), pmt::from_uint64(header.stream_num));
+        pmt_dict = pmt::dict_add(pmt_dict, pmt::intern("class_id"), pmt::from_long(context.class_id));
+        pmt_dict = pmt::dict_add(pmt_dict, pmt::intern("full"), pmt::from_long(context.full));
+        pmt_dict = pmt::dict_add(pmt_dict, pmt::intern("frac"), pmt::from_uint64(context.frac));
+        pmt_dict = pmt::dict_add(pmt_dict, pmt::intern("CIF"), pmt::from_long(context.cif));
+        //pmt_dict = pmt::dict_add(pmt_dict, pmt::intern("reference_point"), pmt::from_long(context.ref_point));
+        pmt_dict = pmt::dict_add(pmt_dict, pmt::intern("bandwidth"), pmt::from_double(context.bw));
+        pmt_dict = pmt::dict_add(pmt_dict, pmt::intern("if_reference_frequency"), pmt::from_uint64(context.if_ref_freq));
+        pmt_dict = pmt::dict_add(pmt_dict, pmt::intern("rf_reference_frequency"), pmt::from_uint64(context.rf_ref_freq));
+        //pmt_dict = pmt::dict_add(pmt_dict, pmt::intern("if_band_offset"), pmt::from_uint64(context.if_band_offset));
+        pmt_dict = pmt::dict_add(pmt_dict, pmt::intern("reference_level"), pmt::from_long(context.ref_lvl));
+        // Not clear that this should be broken out into 2 different gains here if context extension packet is really VITA49.0
+        pmt_dict = pmt::dict_add(pmt_dict, pmt::intern("rf_gain"), pmt::from_float(context.rf_gain)); 
+        pmt_dict = pmt::dict_add(pmt_dict, pmt::intern("if_gain"), pmt::from_float(context.if_gain));
+        pmt_dict = pmt::dict_add(pmt_dict, pmt::intern("samp_rate"), pmt::from_double(context.samp_rate));
+        //pmt_dict = pmt::dict_add(pmt_dict, pmt::intern("timestamp_adjustment"), pmt::from_uint64(context.t_adj));
+        //pmt_dict = pmt::dict_add(pmt_dict, pmt::intern("timestamp_calibration_time"), pmt::from_uint64(context.t_cal));
+        pmt_dict = pmt::dict_add(pmt_dict, pmt::intern("state_and_event_indicator"), pmt::from_long(context.state_indicators));
+        pmt_dict = pmt::dict_add(pmt_dict, pmt::intern("data_packet_payload_format"), pmt::from_uint64(context.payload_format));
+        pmt_dict = pmt::dict_add(pmt_dict, pmt::intern("raw"), pmt::init_s8vector(size_gotten, &d_packet_buffer[0]));
+      }
       else if (size_gotten == 44)
       {
         std::string error_string = "ignoring apparent version flow signal context packet";
         GR_LOG_WARN(this->d_logger, error_string);
       }
       auto r_bit_depth = (context.payload_format >> 32 & 0x0000001f) + 1;
-      if (size_gotten != 44 and (r_bit_depth != d_unpack_idx_size * 8 or (size_gotten != 108 and size_gotten != 72)))
+      if (size_gotten != 44 and (r_bit_depth != d_unpack_idx_size * 8 or (size_gotten != 108 and size_gotten != 72 and size_gotten != 84)))
       {
         std::string error_string = size_gotten == 108 or size_gotten == 72 ?
                                     "The context packet bit depth does not match the input bit depth, check your configuration.\nContext packet bit depth is: " + std::to_string(r_bit_depth) :
@@ -334,6 +360,30 @@ namespace gr {
       context.t_cal = unpack_u32(&d_packet_buffer[difi::CONTEXT_PACKET_OFFSETS[idx++]]);
       context.state_indicators = unpack_u32(&d_packet_buffer[difi::CONTEXT_PACKET_OFFSETS[idx++]]);
       context.payload_format = unpack_u64(&d_packet_buffer[difi::CONTEXT_PACKET_OFFSETS[idx++]]);
+    }
+    template <class T>
+    void difi_source_cpp_impl<T>::unpack_context_kratos_snnb(context_packet &context)
+    {
+      int idx = 0;
+      context.class_id = unpack_u64(&d_packet_buffer[difi::CONTEXT_PACKET_KRATOS_SNNB_OFFSETS[idx++]]);
+      context.full = unpack_u32(&d_packet_buffer[difi::CONTEXT_PACKET_KRATOS_SNNB_OFFSETS[idx++]]);
+      context.frac = unpack_u64(&d_packet_buffer[difi::CONTEXT_PACKET_KRATOS_SNNB_OFFSETS[idx++]]);
+      context.cif = unpack_u32(&d_packet_buffer[difi::CONTEXT_PACKET_KRATOS_SNNB_OFFSETS[idx++]]);
+      //context.ref_point = unpack_u32(&d_packet_buffer[difi::CONTEXT_PACKET_KRATOS_SNNB_OFFSETS[idx++]]);
+      context.bw = parse_vita_fixed_double(unpack_u64(&d_packet_buffer[difi::CONTEXT_PACKET_KRATOS_SNNB_OFFSETS[idx++]]));
+      context.if_ref_freq = unpack_u64(&d_packet_buffer[difi::CONTEXT_PACKET_KRATOS_SNNB_OFFSETS[idx++]]);
+      context.rf_ref_freq = unpack_u64(&d_packet_buffer[difi::CONTEXT_PACKET_KRATOS_SNNB_OFFSETS[idx++]]);
+      //context.if_band_offset = unpack_u64(&d_packet_buffer[difi::CONTEXT_PACKET_KRATOS_SNNB_OFFSETS[idx++]]);
+      context.ref_lvl = unpack_u32(&d_packet_buffer[difi::CONTEXT_PACKET_KRATOS_SNNB_OFFSETS[idx++]]);
+      // Not clear that this should be broken out into 2 different gains here if context extension packet is really VITA49.0
+      u_int32_t gains = unpack_u32(&d_packet_buffer[difi::CONTEXT_PACKET_KRATOS_SNNB_OFFSETS[idx++]]);
+      context.rf_gain = parse_vita_fixed_float((int16_t)(0xffffU & gains));
+      context.if_gain = parse_vita_fixed_float((int16_t)(gains >> 16));
+      context.samp_rate = parse_vita_fixed_double(unpack_u64(&d_packet_buffer[difi::CONTEXT_PACKET_KRATOS_SNNB_OFFSETS[idx++]]));
+      //context.t_adj = unpack_u64(&d_packet_buffer[difi::CONTEXT_PACKET_KRATOS_SNNB_OFFSETS[idx++]]);
+      //context.t_cal = unpack_u32(&d_packet_buffer[difi::CONTEXT_PACKET_KRATOS_SNNB_OFFSETS[idx++]]);
+      context.state_indicators = unpack_u32(&d_packet_buffer[difi::CONTEXT_PACKET_KRATOS_SNNB_OFFSETS[idx++]]);
+      context.payload_format = unpack_u64(&d_packet_buffer[difi::CONTEXT_PACKET_KRATOS_SNNB_OFFSETS[idx]]);
     }
 
     template class difi_source_cpp<gr_complex>;
