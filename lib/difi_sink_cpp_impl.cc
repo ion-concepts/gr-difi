@@ -76,7 +76,8 @@ namespace gr {
       u_int32_t tmp_header_data = d_static_bits ^ d_pkt_n << 16 ^ (d_data_len + difi::DIFI_HEADER_SIZE) / 4;
       u_int32_t tmp_header_context = d_context_static_bits ^ d_context_packet_count << 16 ^ (context_pack_size  / 4);
       u_int64_t d_class_id = d_oui << 32;
-      u_int64_t d_context_class_id = d_class_id ^ 1;
+      //u_int64_t d_context_class_id = d_class_id ^ 1;
+      u_int64_t d_context_class_id = d_class_id ^ 0;
       d_raw.resize(difi::DIFI_HEADER_SIZE);
       pack_u32(&d_raw[0], tmp_header_data);
       pack_u32(&d_raw[4], d_stream_number);
@@ -93,22 +94,39 @@ namespace gr {
       pack_u64(&d_context_raw[difi::CONTEXT_PACKET_OFFSETS[idx++]], d_context_class_id);
       // this is static since only 8 or 16 bit signed complex cartesian is supported for now and item packing is always link efficient
       // see 2.2.2 Standard Flow Signal Context Packet in the DIFI spec for complete information
-      u_int64_t data_payload_format = bit_depth == 8 ? difi::EIGHT_BIT_SIGNED_CART_LINK_EFF : difi::SIXTEEN_BIT_SIGNED_CART_LINK_EFF;
+      // (Legacy VITA49.0  Kratos SNNB format shows packing size = data item size.)
+      u_int64_t data_payload_format = bit_depth == 8 ?
+        ( (context_pack_size == 84) ? difi::EIGHT_BIT_SIGNED_CART_LINK_EFF_SNNB : difi::EIGHT_BIT_SIGNED_CART_LINK_EFF)
+        : difi::SIXTEEN_BIT_SIGNED_CART_LINK_EFF;
+   
+    u_int32_t state_and_event_id =difi::DEFAULT_STATE_AND_EVENTS; // default no events or state values. See 7.1.5.17 The State and Event Indicator Field of the VITA spec
+    u_int64_t to_vita_bw = u_int64_t(samp_rate * .8) << 20; // no fractional bw or samp rate supported in gnuradio, see 2.2.2 Standard Flow Signal Context Packet for bandwidth information
+    u_int64_t to_vita_if_band_offset= int64_t(samp_rate * -0.1) << 20; //generic IF band offset (1Hz resolution)
+    u_int64_t to_vita_samp_rate = samp_rate << 20;
+    u_int64_t to_vita_if_ref_freq = 100000000UL << 20; //generic 100MHz IF reference frequency
+    u_int64_t to_vita_rf_ref_freq = 7500000000UL << 20; //generic 7.5GHz RF reference frequency
+    u_int64_t to_vita_ref_level = 20 << 7; //generic 20dBm reference level
+    double rf_gain_dB=14.2, if_gain_dB=-1.3; //generic two-stage (RF then IF) gains/attenuations
+    int32_t to_vita_rf_gain = rf_gain_dB * (1<<7);
+    int32_t to_vita_if_gain = if_gain_dB * (1<<7);
+    int32_t to_vita_gain = to_vita_if_gain << 16 ^ to_vita_rf_gain;
+    double delay_sec = 1e-5; //generic 10 microsecond timestamp adjustment
+    int64_t to_vita_delay = delay_sec * 1e15; //convert to femtoseconds
 
-      u_int32_t state_and_event_id =difi::DEFAULT_STATE_AND_EVENTS; // default no events or state values. See 7.1.5.17 The State and Event Indicator Field of the VITA spec
-      u_int64_t to_vita_bw = u_int64_t(samp_rate * .8) << 20; // no fractional bw or samp rate supported in gnuradio, see 2.2.2 Standard Flow Signal Context Packet for bandwidth information
-      u_int64_t to_vita_if_band_offset= int64_t(samp_rate * -0.1) << 20; //generic IF band offset (1Hz resolution)
-      u_int64_t to_vita_samp_rate = samp_rate << 20;
-      u_int64_t to_vita_if_ref_freq = 100000000UL << 20; //generic 100MHz IF reference frequency
-      u_int64_t to_vita_rf_ref_freq = 7500000000UL << 20; //generic 7.5GHz RF reference frequency
-      u_int64_t to_vita_ref_level = 20 << 7; //generic 20dBm reference level
-      double rf_gain_dB=14.2, if_gain_dB=-1.3; //generic two-stage (RF then IF) gains/attenuations
-      int32_t to_vita_rf_gain = rf_gain_dB * (1<<7);
-      int32_t to_vita_if_gain = if_gain_dB * (1<<7);
-      int32_t to_vita_gain = to_vita_if_gain << 16 ^ to_vita_rf_gain;
-      double delay_sec = 1e-5; //generic 10 microsecond timestamp adjustment
-      int64_t to_vita_delay = delay_sec * 1e15; //convert to femtoseconds
-      if(context_pack_size == 72)// this check is a temporary work around for a non-compliant hardware device
+    // Override DIFI values with legacy VITA49.0 Kratos SNNB values
+    if (context_pack_size == 84)
+      {
+        state_and_event_id = difi::DEFAULT_STATE_AND_EVENTS_KRATOS_SNNB; // default no events or state values. See 7.1.5.17 The State and Event Indicator Field of the VITA spec
+        to_vita_bw = 0x000010f447100000UL; // no fractional bw or samp rate supported in gnuradio, see 2.2.2 Standard Flow Signal Context Packet for bandwidth information
+        to_vita_if_band_offset= int64_t(samp_rate * -0.1) << 20; //generic IF band offset (1Hz resolution)
+        to_vita_samp_rate = 0x1312D0000000UL;
+        to_vita_if_ref_freq = 0UL; 
+        to_vita_rf_ref_freq = 0x047868C0000000UL; 
+        to_vita_ref_level = 0xE380U;
+        to_vita_gain = 0x00001A00U; // 52dB "kratos end-to-end-path" gain (-5dBm CW with full swing input at 8b)
+      }
+
+    if(context_pack_size == 72)// this check is a temporary work around for a non-compliant hardware device
       {
         pack_u32(&d_context_raw[difi::CONTEXT_PACKET_ALT_OFFSETS[idx++]], 966885376U);
         pack_u64(&d_context_raw[difi::CONTEXT_PACKET_ALT_OFFSETS[idx++]], to_vita_bw);
@@ -120,11 +138,11 @@ namespace gr {
         pack_u64(&d_context_raw[difi::CONTEXT_PACKET_ALT_OFFSETS[idx++]], data_payload_format);
 
       }
-      else if (context_pack_size == 84)// this check is a work around for a non-compliant Kratos SNNB @ 1.7.5
+    else if (context_pack_size == 84)// this check is a work around for a non-compliant Kratos SNNB @ 1.7.5
       {
         pack_u32(&d_context_raw[difi::CONTEXT_PACKET_KRATOS_SNNB_OFFSETS[idx++]], 0);
         pack_u64(&d_context_raw[difi::CONTEXT_PACKET_KRATOS_SNNB_OFFSETS[idx++]], 0);
-        pack_u32(&d_context_raw[difi::CONTEXT_PACKET_KRATOS_SNNB_OFFSETS[idx++]], 0xB9A18000u);
+        pack_u32(&d_context_raw[difi::CONTEXT_PACKET_KRATOS_SNNB_OFFSETS[idx++]], 0x39A18000u);
         //pack_u32(&d_context_raw[difi::CONTEXT_PACKET_KRATOS_SNNB_OFFSETS[idx++]], 0x64u);
         pack_u64(&d_context_raw[difi::CONTEXT_PACKET_KRATOS_SNNB_OFFSETS[idx++]], to_vita_bw);
         pack_u64(&d_context_raw[difi::CONTEXT_PACKET_KRATOS_SNNB_OFFSETS[idx++]], to_vita_if_ref_freq);
