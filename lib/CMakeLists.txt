@@ -10,7 +10,6 @@
 # Setup library
 ########################################################################
 include(GrPlatform) #define LIB_SUFFIX
-
 list(APPEND difi_sources
     difi_source_cpp_impl.cc
     difi_sink_cpp_impl.cc
@@ -20,7 +19,7 @@ list(APPEND difi_sources
     tcp_client.cc
     udp_socket.h
     udp_socket.cc
-)
+    baz_merge_impl.cc )
 
 set(difi_sources "${difi_sources}" PARENT_SCOPE)
 if(NOT difi_sources)

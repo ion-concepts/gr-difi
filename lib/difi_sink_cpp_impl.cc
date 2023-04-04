@@ -16,18 +16,18 @@ namespace gr {
     typename difi_sink_cpp<T>::sptr
     difi_sink_cpp<T>::make(u_int32_t reference_time_full, u_int64_t reference_time_frac, std::string ip_addr, uint32_t port, uint8_t socket_type,
                           bool mode, uint32_t samples_per_packet, int stream_number, u_int64_t samp_rate,
-                          int context_interval, int context_pack_size, int bit_depth,
+                           int context_interval, int context_pack_size, float rf_gain_dB, float if_gain_dB, int bit_depth,
                           int scaling, float gain, gr_complex offset, float max_iq, float min_iq)
     {
       return gnuradio::make_block_sptr<difi_sink_cpp_impl<T>>(reference_time_full, reference_time_frac, ip_addr, port, socket_type, mode,
-                                                              samples_per_packet, stream_number, samp_rate, context_interval, context_pack_size, bit_depth,
+                                                              samples_per_packet, stream_number, samp_rate, context_interval, context_pack_size, rf_gain_dB, if_gain_dB, bit_depth,
                                                               scaling, gain, offset, max_iq, min_iq);
     }
 
     template <class T>
     difi_sink_cpp_impl<T>::difi_sink_cpp_impl(u_int32_t reference_time_full, u_int64_t reference_time_frac, std::string ip_addr,
                                               uint32_t port, uint8_t socket_type, bool mode, uint32_t samples_per_packet, int stream_number,
-                                              u_int64_t samp_rate, int context_interval, int context_pack_size, int bit_depth,
+                                              u_int64_t samp_rate, int context_interval, int context_pack_size, float rf_gain_dB, float if_gain_dB, int bit_depth,
                                               int scaling, float gain, gr_complex offset, float max_iq, float min_iq)
       : gr::sync_block("difi_sink_cpp_impl",
               gr::io_signature::make(1, 1, sizeof(T)),
@@ -106,10 +106,10 @@ namespace gr {
     u_int64_t to_vita_if_ref_freq = 100000000UL << 20; //generic 100MHz IF reference frequency
     u_int64_t to_vita_rf_ref_freq = 7500000000UL << 20; //generic 7.5GHz RF reference frequency
     u_int64_t to_vita_ref_level = 20 << 7; //generic 20dBm reference level
-    double rf_gain_dB=14.2, if_gain_dB=-1.3; //generic two-stage (RF then IF) gains/attenuations
-    int32_t to_vita_rf_gain = rf_gain_dB * (1<<7);
-    int32_t to_vita_if_gain = if_gain_dB * (1<<7);
-    int32_t to_vita_gain = to_vita_if_gain << 16 ^ to_vita_rf_gain;
+    //double rf_gain_dB=14.2, if_gain_dB=-1.3; //generic two-stage (RF then IF) gains/attenuations
+    int32_t to_vita_rf_gain = (rf_gain_dB * (1<<7));
+    int32_t to_vita_if_gain = (if_gain_dB * (1<<7));
+    int32_t to_vita_gain = (to_vita_if_gain << 16) | to_vita_rf_gain;
     double delay_sec = 1e-5; //generic 10 microsecond timestamp adjustment
     int64_t to_vita_delay = delay_sec * 1e15; //convert to femtoseconds
 
@@ -123,7 +123,7 @@ namespace gr {
         to_vita_if_ref_freq = 0UL; 
         to_vita_rf_ref_freq = 0x047868C0000000UL; 
         to_vita_ref_level = 0xE380U;
-        to_vita_gain = 0x00001A00U; // 52dB "kratos end-to-end-path" gain (-5dBm CW with full swing input at 8b)
+        //to_vita_gain = 0x00001A00U; // 52dB "kratos end-to-end-path" gain (-5dBm CW with full swing input at 8b)
       }
 
     if(context_pack_size == 72)// this check is a temporary work around for a non-compliant hardware device

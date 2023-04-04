@@ -90,7 +90,7 @@ namespace gr {
      public:
       difi_sink_cpp_impl(u_int32_t reference_time_full, u_int64_t reference_time_frac, std::string ip_addr, uint32_t port, uint8_t socket_type, bool mode,
                         uint32_t samples_per_packet, int stream_number, u_int64_t samp_rate,
-                        int context_interval, int context_pack_size, int bit_depth, int scaling, float gain, gr_complex offset, float max_iq, float min_iq);
+                        int context_interval, int context_pack_size, float rf_gain, float if_gain, int bit_depth, int scaling, float gain, gr_complex offset, float max_iq, float min_iq);
       ~difi_sink_cpp_impl();
 
       // Where all the action really happens

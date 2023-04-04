@@ -37,6 +37,8 @@ void bind_difi_sink_cpp_template(py::module& m, const char* classname)
            py::arg("samp_rate"),
            py::arg("context_interval"),
            py::arg("context_pack_size"),
+           py::arg("rf_gain_dB"),
+           py::arg("if_gain_dB"),
            py::arg("bit_depth"),
            py::arg("scaling"),
            py::arg("gain"),

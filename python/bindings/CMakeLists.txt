@@ -27,10 +27,10 @@ include(GrPybind)
 ########################################################################
 # Python Bindings
 ########################################################################
-
 list(APPEND difi_python_files
     difi_source_cpp_python.cc
-    difi_sink_cpp_python.cc python_bindings.cc)
+    difi_sink_cpp_python.cc
+    baz_merge_python.cc python_bindings.cc)
 
 GR_PYBIND_MAKE_OOT(difi 
    ../..

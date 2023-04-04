@@ -301,6 +301,7 @@ blocks:
     context_packet_send_count: '1000'
     data_size: '722'
     gain: '1.0'
+    if_gain_dB: '0'
     ip_addr: 192.168.10.20
     max_iq: '1.0'
     min_iq: '-1.0'
@@ -310,6 +311,7 @@ blocks:
     protocol: '2'
     reference_time_frac: '0'
     reference_time_full: '0'
+    rf_gain_dB: '63'
     sample_rate: samp_rate
     scaling: '2'
     stream_id: '0'
