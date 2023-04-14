@@ -7,6 +7,5 @@
 #
 install(FILES
     difi_source_cpp.block.yml
-    difi_sink_cpp.block.yml
-    difi_baz_merge.block.yml DESTINATION share/gnuradio/grc/blocks
+    difi_sink_cpp.block.yml DESTINATION share/gnuradio/grc/blocks
 )

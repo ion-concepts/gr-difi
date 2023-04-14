@@ -18,8 +18,7 @@ list(APPEND difi_sources
     tcp_client.h
     tcp_client.cc
     udp_socket.h
-    udp_socket.cc
-    baz_merge_impl.cc )
+    udp_socket.cc )
 
 set(difi_sources "${difi_sources}" PARENT_SCOPE)
 if(NOT difi_sources)
