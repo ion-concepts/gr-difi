@@ -33,43 +33,6 @@ options:
     state: enabled
 
 blocks:
-- name: analog_const_source_x_0
-  id: analog_const_source_x
-  parameters:
-    affinity: ''
-    alias: ''
-    comment: "Scale by zero to erase Rx data but keep the samples to \nbe repopulated\
-      \ for the Tx stream, solving the issue of\nthe absence of rate control (digitizer\
-      \ back pressure) that you\nwould have in the USRP paradigm."
-    const: '0'
-    maxoutbuf: '0'
-    minoutbuf: '0'
-    type: complex
-  states:
-    bus_sink: false
-    bus_source: false
-    bus_structure: null
-    coordinate: [488, 212.0]
-    rotation: 0
-    state: true
-- name: blocks_add_xx_0
-  id: blocks_add_xx
-  parameters:
-    affinity: ''
-    alias: ''
-    comment: ''
-    maxoutbuf: '0'
-    minoutbuf: '0'
-    num_inputs: '2'
-    type: complex
-    vlen: '1'
-  states:
-    bus_sink: false
-    bus_source: false
-    bus_structure: null
-    coordinate: [1064, 144.0]
-    rotation: 0
-    state: enabled
 - name: blocks_multiply_const_vxx_0
   id: blocks_multiply_const_vxx
   parameters:
@@ -87,24 +50,6 @@ blocks:
     bus_source: false
     bus_structure: null
     coordinate: [1352, 596.0]
-    rotation: 0
-    state: true
-- name: blocks_multiply_xx_0
-  id: blocks_multiply_xx
-  parameters:
-    affinity: ''
-    alias: ''
-    comment: ''
-    maxoutbuf: '0'
-    minoutbuf: '0'
-    num_inputs: '2'
-    type: complex
-    vlen: '1'
-  states:
-    bus_sink: false
-    bus_source: false
-    bus_structure: null
-    coordinate: [824, 312.0]
     rotation: 0
     state: true
 - name: blocks_null_source_0
@@ -128,26 +73,6 @@ blocks:
     coordinate: [528, 32.0]
     rotation: 0
     state: disabled
-- name: blocks_tag_gate_0
-  id: blocks_tag_gate
-  parameters:
-    affinity: ''
-    alias: ''
-    comment: "To use this pair of DIFI Sink/Sources in paired mode \nbypass the tag\
-      \ gate so that context extension packets \ncan be looped back to the SNNB"
-    maxoutbuf: '0'
-    minoutbuf: '0'
-    propagate_tags: 'False'
-    single_key: '""'
-    type: complex
-    vlen: '1'
-  states:
-    bus_sink: false
-    bus_source: false
-    bus_structure: null
-    coordinate: [560, 364.0]
-    rotation: 0
-    state: bypassed
 - name: difi_sink_cpp_0
   id: difi_sink_cpp
   parameters:
@@ -230,6 +155,26 @@ blocks:
     coordinate: [944, 460.0]
     rotation: 0
     state: enabled
+- name: difi_synchronize_0
+  id: difi_synchronize
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: "To use this pair of DIFI Sink/Sources in paired mode \nset \"Share tags\"\
+      \ to True so that context extension packets \nare passed from synchro port to\
+      \ the output and looped\nback to the SNNB"
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    share_tags: 'True'
+    type: complex
+    vlen: '1'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [792, 256.0]
+    rotation: 0
+    state: true
 - name: lr_wpan_baz_merge_0
   id: lr_wpan_baz_merge
   parameters:
@@ -263,6 +208,7 @@ blocks:
     len_tag_key: '"packet_len"'
     maxoutbuf: '0'
     minoutbuf: '0'
+    propagate_tags: 'False'
     type: complex
     vlen: '1'
   states:
@@ -437,21 +383,18 @@ blocks:
     state: true
 
 connections:
-- [analog_const_source_x_0, '0', blocks_multiply_xx_0, '0']
-- [blocks_add_xx_0, '0', difi_sink_cpp_0, '0']
-- [blocks_add_xx_0, '0', pad_sink_0, '0']
 - [blocks_multiply_const_vxx_0, '0', pad_sink_0_0_0, '0']
-- [blocks_multiply_xx_0, '0', blocks_add_xx_0, '1']
 - [blocks_null_source_0, '0', lr_wpan_baz_merge_0, '0']
-- [blocks_tag_gate_0, '0', blocks_multiply_xx_0, '1']
-- [difi_source_cpp_0, '0', blocks_tag_gate_0, '0']
+- [difi_source_cpp_0, '0', difi_synchronize_0, '1']
 - [difi_source_cpp_0, '0', pad_sink_0_0, '0']
 - [difi_source_cpp_0_0, '0', blocks_multiply_const_vxx_0, '0']
-- [lr_wpan_baz_merge_0, '0', blocks_add_xx_0, '0']
-- [lr_wpan_burst_to_stream_0, '0', blocks_add_xx_0, '0']
+- [difi_synchronize_0, '0', difi_sink_cpp_0, '0']
+- [difi_synchronize_0, '0', pad_sink_0, '0']
+- [lr_wpan_baz_merge_0, '0', difi_synchronize_0, '0']
+- [lr_wpan_burst_to_stream_0, '0', difi_synchronize_0, '0']
 - [pad_source_0, '0', lr_wpan_baz_merge_0, '1']
 - [pad_source_0, '0', lr_wpan_burst_to_stream_0, '0']
 
 metadata:
   file_format: 1
-  grc_version: 3.10.4.0
+  grc_version: 3.10.5.1
