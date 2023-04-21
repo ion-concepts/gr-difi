@@ -50,6 +50,9 @@ parameters:
 outputs:
 -   domain: stream
     dtype: ${ type.fcn }
+-   id: pck_n
+    domain: message
+    optional: true
 asserts:
 - ${ bit_depth == '8' if type.fcn == 'sc8' else True }
 

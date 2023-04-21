@@ -30,7 +30,7 @@ include(GrPybind)
 list(APPEND difi_python_files
     difi_source_cpp_python.cc
     difi_sink_cpp_python.cc
-    python_bindings.cc)
+    synchronize_python.cc python_bindings.cc)
 
 GR_PYBIND_MAKE_OOT(difi 
    ../..

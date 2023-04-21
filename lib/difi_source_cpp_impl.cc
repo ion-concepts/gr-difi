@@ -85,6 +85,8 @@ namespace gr {
       d_unpacker = unpack_16<T>;
       if(d_unpack_idx_size == 1)
           d_unpacker = &unpack_8<T>;
+
+      this->message_port_register_out(pmt::intern("pck_n"));
     }
 
     template <class T>
@@ -156,11 +158,15 @@ namespace gr {
       if (header.type == 1 and d_last_pkt_n != -1 and (d_last_pkt_n + 1) % VITA_PKT_MOD != header.pkt_n)
       {
         GR_LOG_WARN(this->d_logger, "got an out of order packet, " + std::to_string(header.pkt_n) +  " expected " + std::to_string((d_last_pkt_n + 1) % VITA_PKT_MOD));
-        this->add_item_tag(0, this->nitems_written(0), pmt::intern("pck_n"), make_pkt_n_dict(header.pkt_n, size_gotten));
+        const auto pck_n_dict = make_pkt_n_dict(header.pkt_n, size_gotten);
+        this->add_item_tag(0, this->nitems_written(0), pmt::intern("pck_n"), pck_n_dict);
+        this->message_port_pub(pmt::intern("pck_n"), pck_n_dict);
       }
       if (d_last_pkt_n == -1 and header.type == 1)
       {
-        this->add_item_tag(0, this->nitems_written(0), pmt::intern("pck_n"), make_pkt_n_dict(header.pkt_n, size_gotten));
+        const auto pck_n_dict = make_pkt_n_dict(header.pkt_n, size_gotten);
+        this->add_item_tag(0, this->nitems_written(0), pmt::intern("pck_n"), pck_n_dict);
+        this->message_port_pub(pmt::intern("pck_n"), pck_n_dict);
       }
 
       if (header.type == 1 and d_send) // one is a data packet (see DIFI spec)
