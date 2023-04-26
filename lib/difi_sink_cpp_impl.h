@@ -19,8 +19,8 @@ namespace gr {
   class tcp_client;
   class udp_socket;
 
-    template <class T>
-    class difi_sink_cpp_impl : public difi_sink_cpp<T>
+    template <class T, class S>
+    class difi_sink_cpp_impl : public difi_sink_cpp<T, S>
     {
      private:
         void pack_u64(unsigned char * start, u_int64_t val)
@@ -45,9 +45,10 @@ namespace gr {
           memcpy(start, &val, sizeof(val));
         }
 
+        static void pack_samples(S* output_vector, const T* input_vector, size_t num_samples);
+
         void process_tags(int noutput_items);
-        void pack_T(T val);
-        std::vector<int8_t> pack_data();
+        void pack_data();
         void send_context();
         std::tuple<u_int32_t, u_int64_t> add_frac_full();
 
@@ -66,6 +67,7 @@ namespace gr {
         std::vector<int8_t> d_raw;
         std::vector<u_int8_t> d_context_raw;
         std::vector<int8_t> d_out_buf;
+        std::vector<int8_t> d_to_send;
         double d_time_adj;
         u_int64_t d_pcks_since_last_reference;
         int d_current_buff_idx;
@@ -78,11 +80,6 @@ namespace gr {
         u_int32_t d_context_static_bits;
         u_int32_t d_unpack_idx_size;
         u_int32_t d_samples_per_packet;
-        int d_scaling_mode;
-        float d_gain;
-        gr_complex d_offset;
-        float d_max_iq;
-        float d_min_iq;
 
         tcp_client* p_tcpsocket;
         udp_socket* p_udpsocket;
@@ -90,7 +87,7 @@ namespace gr {
      public:
       difi_sink_cpp_impl(u_int32_t reference_time_full, u_int64_t reference_time_frac, std::string ip_addr, uint32_t port, uint8_t socket_type, bool mode,
                         uint32_t samples_per_packet, int stream_number, u_int64_t samp_rate,
-                        int context_interval, int context_pack_size, float rf_gain, float if_gain, int bit_depth, int scaling, float gain, gr_complex offset, float max_iq, float min_iq);
+                        int context_interval, int context_pack_size, float rf_gain, float if_gain);
       ~difi_sink_cpp_impl();
 
       // Where all the action really happens
@@ -105,4 +102,3 @@ namespace gr {
 } // namespace gr
 
 #endif /* INCLUDED_DIFI_SINK_CPP_IMPL_H */
-

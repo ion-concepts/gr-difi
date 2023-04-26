@@ -5,6 +5,7 @@
 
 #include <gnuradio/io_signature.h>
 #include "difi_sink_cpp_impl.h"
+#include <volk/volk.h>
 
 #include "tcp_client.h"
 #include "udp_socket.h"
@@ -12,23 +13,66 @@
 namespace gr {
   namespace difi {
 
-    template <class T>
-    typename difi_sink_cpp<T>::sptr
-    difi_sink_cpp<T>::make(u_int32_t reference_time_full, u_int64_t reference_time_frac, std::string ip_addr, uint32_t port, uint8_t socket_type,
-                          bool mode, uint32_t samples_per_packet, int stream_number, u_int64_t samp_rate,
-                           int context_interval, int context_pack_size, float rf_gain_dB, float if_gain_dB, int bit_depth,
-                          int scaling, float gain, gr_complex offset, float max_iq, float min_iq)
+    template<>
+    void difi_sink_cpp_impl<gr_complex, std::complex<int8_t>>::pack_samples(
+                                                                            std::complex<int8_t>* output_vector,
+                                                                            const gr_complex* input_vector,
+                                                                            size_t num_samples)
     {
-      return gnuradio::make_block_sptr<difi_sink_cpp_impl<T>>(reference_time_full, reference_time_frac, ip_addr, port, socket_type, mode,
-                                                              samples_per_packet, stream_number, samp_rate, context_interval, context_pack_size, rf_gain_dB, if_gain_dB, bit_depth,
-                                                              scaling, gain, offset, max_iq, min_iq);
+      volk_32f_s32f_convert_8i(reinterpret_cast<int8_t*>(output_vector),
+                               reinterpret_cast<const float*>(input_vector),
+                               127.0,
+                               2 * num_samples);
     }
 
-    template <class T>
-    difi_sink_cpp_impl<T>::difi_sink_cpp_impl(u_int32_t reference_time_full, u_int64_t reference_time_frac, std::string ip_addr,
+    template<>
+    void difi_sink_cpp_impl<gr_complex, std::complex<int16_t>>::pack_samples(
+                                                                             std::complex<int16_t> * output_vector,
+                                                                             const gr_complex* input_vector,
+                                                                             size_t num_samples)
+    {
+      volk_32f_s32f_convert_16i(reinterpret_cast<int16_t*>(output_vector),
+                                reinterpret_cast<const float*>(input_vector),
+                                32767.0,
+                                2 * num_samples);
+    }
+
+    template<>
+    void difi_sink_cpp_impl<std::complex<int8_t>, std::complex<int8_t>>::pack_samples(
+                                                                                      std::complex<int8_t>* output_vector,
+                                                                                      const std::complex<int8_t>* input_vector,
+                                                                                      size_t num_samples)
+    {
+      
+      std::memcpy(output_vector, input_vector, 2 * num_samples);
+    }
+
+     template<>
+     void difi_sink_cpp_impl<std::complex<int8_t>, std::complex<int16_t>>::pack_samples(
+                                                                                        std::complex<int16_t>* output_vector,
+                                                                                        const std::complex<int8_t>* input_vector,
+                                                                                          size_t num_samples)
+     {
+      volk_8i_convert_16i(reinterpret_cast<int16_t*>(output_vector),
+                          reinterpret_cast<const int8_t*>(input_vector),
+                          2 * num_samples);
+    }
+
+    template <class T, class S>
+    typename difi_sink_cpp<T, S>::sptr
+    difi_sink_cpp<T, S>::make(u_int32_t reference_time_full, u_int64_t reference_time_frac, std::string ip_addr, uint32_t port, uint8_t socket_type,
+                          bool mode, uint32_t samples_per_packet, int stream_number, u_int64_t samp_rate,
+                          int context_interval, int context_pack_size, float rf_gain_dB, float if_gain_dB)
+
+    {
+      return gnuradio::make_block_sptr<difi_sink_cpp_impl<T, S>>(reference_time_full, reference_time_frac, ip_addr, port, socket_type, mode,
+                                                              samples_per_packet, stream_number, samp_rate, context_interval, context_pack_size, rf_gain_dB, if_gain_dB);
+    }
+
+    template <class T, class S>
+    difi_sink_cpp_impl<T, S>::difi_sink_cpp_impl(u_int32_t reference_time_full, u_int64_t reference_time_frac, std::string ip_addr,
                                               uint32_t port, uint8_t socket_type, bool mode, uint32_t samples_per_packet, int stream_number,
-                                              u_int64_t samp_rate, int context_interval, int context_pack_size, float rf_gain_dB, float if_gain_dB, int bit_depth,
-                                              int scaling, float gain, gr_complex offset, float max_iq, float min_iq)
+                                              u_int64_t samp_rate, int context_interval, int context_pack_size, float rf_gain_dB, float if_gain_dB)
       : gr::sync_block("difi_sink_cpp_impl",
               gr::io_signature::make(1, 1, sizeof(T)),
               gr::io_signature::make(0, 0, 0)),
@@ -69,10 +113,9 @@ namespace gr {
       d_frac = reference_time_frac;
       d_static_bits = 0x18e00000; // header bits 31-20 must be 0x18e (posix), 0x18a (gps), or 0x186 (utc)
       d_context_static_bits = 0x49e00000;// header bits 31-20 must be 0x49e (posix), 0x49a (gps), or 0x496 (utc)
-      d_unpack_idx_size = bit_depth == 8 ? 1 : 2;
       d_samples_per_packet = samples_per_packet;
       d_time_adj = (double)d_samples_per_packet / samp_rate;
-      d_data_len = samples_per_packet * d_unpack_idx_size * 2;
+      d_data_len = samples_per_packet * sizeof(S);
       u_int32_t tmp_header_data = d_static_bits ^ d_pkt_n << 16 ^ (d_data_len + difi::DIFI_HEADER_SIZE) / 4;
       u_int32_t tmp_header_context = d_context_static_bits ^ d_context_packet_count << 16 ^ (context_pack_size  / 4);
       u_int64_t d_class_id = d_oui << 32;
@@ -95,7 +138,7 @@ namespace gr {
       // this is static since only 8 or 16 bit signed complex cartesian is supported for now and item packing is always link efficient
       // see 2.2.2 Standard Flow Signal Context Packet in the DIFI spec for complete information
       // (Legacy VITA49.0  Kratos SNNB format shows packing size = data item size.)
-      u_int64_t data_payload_format = bit_depth == 8 ?
+      u_int64_t data_payload_format = sizeof(S) == 2 ?
         ( (context_pack_size == 84) ? difi::EIGHT_BIT_SIGNED_CART_LINK_EFF_SNNB : difi::EIGHT_BIT_SIGNED_CART_LINK_EFF)
         : difi::SIXTEEN_BIT_SIGNED_CART_LINK_EFF;
    
@@ -176,29 +219,11 @@ namespace gr {
         pack_u64(&d_context_raw[difi::CONTEXT_PACKET_OFFSETS[idx++]], data_payload_format);
       }
       d_out_buf.resize(d_data_len);
-
-      d_scaling_mode = scaling;
-
-      if(d_scaling_mode == 1){
-        //manual
-        d_gain = gain;
-        d_offset = offset;
-      }
-      else if(d_scaling_mode == 2){
-          //min-max
-          int full_scale = (1 << bit_depth) - 1;
-          float EPSILON = 0.0001;
-          if ((max_iq - min_iq) < EPSILON){
-            GR_LOG_ERROR(this->d_logger, "(max_iq - min_iq) too small or is negative, bailing to avoid numerical issues!");
-            throw std::runtime_error("(max_iq - min_iq) too small or is negative, bailing to avoid numerical issues!");
-          }
-          d_gain = float(full_scale) / (max_iq - min_iq);
-          d_offset = gr_complex(-1.0 * ((max_iq - min_iq) / 2 + min_iq),-1.0 * ((max_iq - min_iq) / 2 + min_iq));
-      }
+      d_to_send.resize(difi::DIFI_HEADER_SIZE + d_out_buf.size());
     }
 
-    template <class T>
-    difi_sink_cpp_impl<T>::~difi_sink_cpp_impl()
+    template <class T, class S>
+    difi_sink_cpp_impl<T, S>::~difi_sink_cpp_impl()
     {
       if(p_udpsocket)
         delete p_udpsocket;
@@ -207,8 +232,8 @@ namespace gr {
         delete p_tcpsocket;
     }
 
-    template <class T>
-    int difi_sink_cpp_impl<T>::work(int noutput_items,
+    template <class T, class S>
+    int difi_sink_cpp_impl<T, S>::work(int noutput_items,
         gr_vector_const_void_star &input_items,
         gr_vector_void_star &output_items)
     {
@@ -232,27 +257,30 @@ namespace gr {
         process_tags(noutput_items);
       }
 
-      for(int i = 0; i < noutput_items; i++)
+      int consumed = 0;
+      while (consumed < noutput_items)
       {
-        gr_complex in_val = gr_complex(in[i].real(), in[i].imag());
-        if(d_scaling_mode > 0){
-            in_val = (in_val + d_offset) * d_gain;
-        }
-        this->pack_T(in_val);
-        d_current_buff_idx += 2 * d_unpack_idx_size;
+        const int to_consume = std::min(static_cast<size_t>(noutput_items - consumed),
+                                        (d_out_buf.size() - d_current_buff_idx) / sizeof(S));
+        pack_samples(reinterpret_cast<S*>(&d_out_buf[d_current_buff_idx]),
+                     &in[consumed],
+                     to_consume);
+        consumed += to_consume;
+        d_current_buff_idx += to_consume * sizeof(S);
+
         if(d_current_buff_idx >= d_out_buf.size())
         {
           if(!d_is_paired_mode and d_packet_count % d_contex_packet_interval == 0)
               send_context();
 
-          auto to_send = pack_data();
+          pack_data();
           if(p_udpsocket)
           {
-            p_udpsocket->send(&to_send[0],to_send.size());
+            p_udpsocket->send(&d_to_send[0], d_to_send.size());
           }
           if(p_tcpsocket)
           {
-            p_tcpsocket->send(&to_send[0],to_send.size());
+            p_tcpsocket->send(&d_to_send[0], d_to_send.size());
           }
 
           d_pkt_n = (d_pkt_n + 1) % difi::VITA_PKT_MOD;
@@ -264,8 +292,8 @@ namespace gr {
       return noutput_items;
     }
 
-    template <class T>
-    void difi_sink_cpp_impl<T>::process_tags(int noutput_items)
+    template <class T, class S>
+    void difi_sink_cpp_impl<T, S>::process_tags(int noutput_items)
     {
       auto abs_offset = this->nitems_read(0);
       std::vector<tag_t> tags;
@@ -299,11 +327,11 @@ namespace gr {
           d_full = u_int32_t(pmt::to_long(pmt::dict_ref(tag.value, pmt::mp("full"), pmt::get_PMT_NIL())));
           d_frac = pmt::to_uint64(pmt::dict_ref(tag.value, pmt::mp("frac"), pmt::get_PMT_NIL()));
           d_data_len = pmt::to_uint64(pmt::dict_ref(tag.value, pmt::mp("data_len"), pmt::get_PMT_NIL())) - difi::DIFI_HEADER_SIZE;
-          if (d_data_len % (2 * d_unpack_idx_size) != 0)
+          if (d_data_len % sizeof(S) != 0)
           {
             GR_LOG_WARN(this->d_logger, "data len cannot fit an integer number of samples, something is misconfigured");
           }
-          d_samples_per_packet = d_data_len / (2 * d_unpack_idx_size);
+          d_samples_per_packet = d_data_len / sizeof(S);
           d_out_buf.clear(); // clear the data since we missed samples, start fresh
           d_out_buf.resize(d_data_len);
           d_current_buff_idx = 0;
@@ -316,23 +344,23 @@ namespace gr {
         }
       }
     }
-    template <class T>
-    std::vector<int8_t> difi_sink_cpp_impl<T>::pack_data()
+    template <class T, class S>
+    void difi_sink_cpp_impl<T, S>::pack_data()
     {
       std::vector<int8_t> to_send(difi::DIFI_HEADER_SIZE + d_out_buf.size());
       u_int32_t full;
       u_int64_t frac;
       std::tie(full, frac) = add_frac_full();
       u_int32_t header = d_static_bits ^ d_pkt_n << 16 ^ (d_data_len + difi::DIFI_HEADER_SIZE) / 4;
-      pack_u32(&to_send[0], header);
-      std::copy(d_raw.begin() + 4, d_raw.begin() + 16, to_send.begin() + 4);
-      pack_u32(&to_send[16], full);
-      pack_u64(&to_send[20], frac);
-      std::copy(d_out_buf.begin(), d_out_buf.end(), to_send.begin() + difi::DIFI_HEADER_SIZE);
-      return to_send;
+      pack_u32(&d_to_send[0], header);
+      std::copy(d_raw.begin() + 4, d_raw.begin() + 16, d_to_send.begin() + 4);
+      pack_u32(&d_to_send[16], full);
+      pack_u64(&d_to_send[20], frac);
+      std::copy(d_out_buf.begin(), d_out_buf.end(), d_to_send.begin() + difi::DIFI_HEADER_SIZE);
     }
-    template <class T>
-    void difi_sink_cpp_impl<T>::send_context()
+
+    template <class T, class S>
+    void difi_sink_cpp_impl<T, S>::send_context()
     {
         if(d_context_packet_size == 108)// this check is a temporary work around for a non-compliant hardware device
         {
@@ -356,8 +384,8 @@ namespace gr {
         d_context_packet_count = (d_context_packet_count + 1) % difi::VITA_PKT_MOD;
     }
 
-    template <class T>
-    std::tuple<u_int32_t, u_int64_t> difi_sink_cpp_impl<T>::add_frac_full()
+    template <class T, class S>
+    std::tuple<u_int32_t, u_int64_t> difi_sink_cpp_impl<T, S>::add_frac_full()
     {
       auto frac = d_frac;
       auto full = d_full;
@@ -371,18 +399,11 @@ namespace gr {
       full += u_int32_t(time_adj);
       return std::make_tuple(full, frac);
     }
-    template <class T>
-    void difi_sink_cpp_impl<T>::pack_T(T val)
-    {
-      auto re = (static_cast<int16_t>(val.real()));
-      auto im = (static_cast<int16_t>(val.imag()));
-      memcpy(&d_out_buf[d_current_buff_idx], &re, d_unpack_idx_size);
-      memcpy(&d_out_buf[d_current_buff_idx + d_unpack_idx_size], &im, d_unpack_idx_size);
-    }
 
-    template class difi_sink_cpp<gr_complex>;
-    template class difi_sink_cpp<std::complex<char>>;
+    template class difi_sink_cpp<gr_complex, std::complex<int16_t>>;
+    template class difi_sink_cpp<gr_complex, std::complex<int8_t>>;
+    template class difi_sink_cpp<std::complex<int8_t>, std::complex<int16_t>>;
+    template class difi_sink_cpp<std::complex<int8_t>, std::complex<int8_t>>;
 
   } /* namespace difi */
 } /* namespace gr */
-

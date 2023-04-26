@@ -13,6 +13,8 @@
 #include <deque>
 #include <iterator>
 #include <pmt/pmt.h>
+#include <stdexcept>
+#include <volk/volk.h>
 
 #include <difi/difi_common.h>
 #include <difi/difi_source_cpp.h>
@@ -22,8 +24,8 @@ namespace difi {
 
 class tcp_server;
 class udp_socket;
-template <class T>
-class difi_source_cpp_impl : public difi_source_cpp<T>
+template <class T, class S>
+class difi_source_cpp_impl : public difi_source_cpp<T, S>
 {
     double parse_vita_fixed_double(u_int64_t bits)
     {
@@ -65,26 +67,7 @@ class difi_source_cpp_impl : public difi_source_cpp<T>
 
 
 private:
-    template <typename  M>
-    static M unpack_16(int8_t *start)
-    {
-      int16_t re;
-      memcpy(&re, start, 2);
-      int16_t imag;
-      memcpy(&imag, start + 2, 2);
-      return M(re, imag);
-    }
-
-    template <typename  M>
-    static M unpack_8(int8_t *start)
-    {
-      int8_t re;
-      memcpy(&re, start, 1);
-      int8_t imag;
-      memcpy(&imag, start + 1, 1);
-      return M(re, imag);
-    }
-
+    static void unpack_samples(T* output_vector, const S* input_vector, size_t num_samples);
 
     typedef enum
     {
@@ -94,7 +77,6 @@ private:
         warnings_no_forward = 3
     }context_behavior;
 
-    T (*d_unpacker)(int8_t *);
     void parse_header(header_data& data);
     pmt::pmt_t make_pkt_n_dict(int pkt_n, int size_gotten);
     void unpack_context(context_packet& context);
@@ -107,7 +89,6 @@ private:
     u_int32_t d_last_full;
     u_int64_t d_last_frac;
     int32_t d_static_bits;
-    u_int32_t d_unpack_idx_size;
     int d_behavior;
     int d_stream_number;
     long d_last_pkt_n;
@@ -122,7 +103,6 @@ public:
                     uint32_t port,
                     uint8_t socket_type,
                     int stream_number,
-                    int bit_depth,
                     int context_pkt_behavior);
     ~difi_source_cpp_impl();
     int work(int noutput_items,

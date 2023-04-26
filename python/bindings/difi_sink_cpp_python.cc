@@ -15,11 +15,11 @@ namespace py = pybind11;
 // pydoc.h is automatically generated in the build directory
 #include <difi_sink_cpp_pydoc.h>
 
-template <typename T>
+template <typename T, typename S>
 void bind_difi_sink_cpp_template(py::module& m, const char* classname)
 {
 
-    using difi_sink_cpp    = ::gr::difi::difi_sink_cpp<T>;
+    using difi_sink_cpp    = ::gr::difi::difi_sink_cpp<T, S>;
 
 
     py::class_<difi_sink_cpp, gr::sync_block, gr::block, gr::basic_block,
@@ -39,12 +39,6 @@ void bind_difi_sink_cpp_template(py::module& m, const char* classname)
            py::arg("context_pack_size"),
            py::arg("rf_gain_dB"),
            py::arg("if_gain_dB"),
-           py::arg("bit_depth"),
-           py::arg("scaling"),
-           py::arg("gain"),
-           py::arg("offset"),
-           py::arg("max_iq"),
-           py::arg("min_iq"),
            D(difi_sink_cpp,make)
         );
 
@@ -52,14 +46,8 @@ void bind_difi_sink_cpp_template(py::module& m, const char* classname)
 
 void bind_difi_sink_cpp(py::module& m)
 {
-    bind_difi_sink_cpp_template<gr_complex>(m, "difi_sink_cpp_fc32");
-    bind_difi_sink_cpp_template<std::complex<char>>(m, "difi_sink_cpp_sc8");
+    bind_difi_sink_cpp_template<gr_complex, std::complex<int16_t>>(m, "difi_sink_cpp_sc16_fc32");
+    bind_difi_sink_cpp_template<gr_complex, std::complex<int8_t>>(m, "difi_sink_cpp_sc8_fc32");
+    bind_difi_sink_cpp_template<std::complex<int8_t>, std::complex<int16_t>>(m, "difi_sink_cpp_sc16_sc8");
+    bind_difi_sink_cpp_template<std::complex<int8_t>, std::complex<int8_t>>(m, "difi_sink_cpp_sc8_sc8");
 }
-
-
-
-
-
-
-
-

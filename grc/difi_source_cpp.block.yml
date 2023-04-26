@@ -8,7 +8,7 @@ label: DIFI Source
 category: '[DIFI]'
 templates:
   imports: import difi
-  make: difi.difi_source_cpp_${type.fcn}(${ip_addr}, ${port}, ${protocol}, ${stream_num}, int(${bit_depth}), int(${context_behavior}))
+  make: difi.difi_source_cpp_${bit_depth.fcn}_${type.fcn}(${ip_addr}, ${port}, ${protocol}, ${stream_num}, int(${context_behavior}))
 
 parameters:
 - id: type
@@ -22,6 +22,8 @@ parameters:
   label: Bit Depth
   dtype: enum
   options: ['8', '16']
+  option_attributes:
+      fcn: [sc8, sc16]
   default: '8'
 - id: ip_addr
   label: Source IP Address
