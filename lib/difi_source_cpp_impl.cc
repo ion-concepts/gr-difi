@@ -44,14 +44,59 @@ namespace gr {
       return be64toh(val);
     }
 
-    template <class T>
-    typename difi_source_cpp<T>::sptr difi_source_cpp<T>::make(std::string ip_addr, uint32_t port, uint8_t socket_type, int stream_number, int bit_depth, int context_pkt_behavior)
+    template<>
+    void difi_source_cpp_impl<gr_complex, std::complex<int8_t>>::unpack_samples(
+                                                                                gr_complex* output_vector,
+                                                                                const std::complex<int8_t>* input_vector,
+                                                                                size_t num_samples)
     {
-      return gnuradio::make_block_sptr<difi_source_cpp_impl<T>>(ip_addr, port, socket_type, stream_number, bit_depth, context_pkt_behavior);
+      volk_8i_s32f_convert_32f(reinterpret_cast<float*>(output_vector),
+                               reinterpret_cast<const int8_t*>(input_vector),
+                               128.0,
+                               2 * num_samples);
     }
 
-    template <class T>
-    difi_source_cpp_impl<T>::difi_source_cpp_impl(std::string ip_addr, uint32_t port, uint8_t socket_type, int stream_number, int bit_depth, int context_pkt_behavior)
+    template<>
+    void difi_source_cpp_impl<gr_complex, std::complex<int16_t>>::unpack_samples(
+                                                                                 gr_complex* output_vector,
+                                                                                 const std::complex<int16_t>* input_vector,
+                                                                                 size_t num_samples)
+    {
+      volk_16i_s32f_convert_32f(reinterpret_cast<float*>(output_vector),
+                                reinterpret_cast<const int16_t*>(input_vector),
+                                32768.0,
+                                2 * num_samples);
+    }
+
+    template<>
+    void difi_source_cpp_impl<std::complex<int8_t>, std::complex<int8_t>>::unpack_samples(
+                                                                                          std::complex<int8_t>* output_vector,
+                                                                                          const std::complex<int8_t>* input_vector,
+                                                                                          size_t num_samples)
+    {
+      
+      std::memcpy(output_vector, input_vector, 2 * num_samples);
+    }
+
+     template<>
+     void difi_source_cpp_impl<std::complex<int8_t>, std::complex<int16_t>>::unpack_samples(
+                                                                                            std::complex<int8_t>* output_vector,
+                                                                                            const std::complex<int16_t>* input_vector,
+                                                                                            size_t num_samples)
+    {
+      volk_16i_convert_8i(reinterpret_cast<int8_t*>(output_vector),
+                          reinterpret_cast<const int16_t*>(input_vector),
+                          2 * num_samples);
+    }
+
+    template <class T, class S>
+    typename difi_source_cpp<T, S>::sptr difi_source_cpp<T, S>::make(std::string ip_addr, uint32_t port, uint8_t socket_type, int stream_number, int context_pkt_behavior)
+    {
+      return gnuradio::make_block_sptr<difi_source_cpp_impl<T, S>>(ip_addr, port, socket_type, stream_number, context_pkt_behavior);
+    }
+
+    template <class T, class S>
+    difi_source_cpp_impl<T, S>::difi_source_cpp_impl(std::string ip_addr, uint32_t port, uint8_t socket_type, int stream_number, int context_pkt_behavior)
         : gr::sync_block("source_cpp", gr::io_signature::make(0, 0, 0),
                          gr::io_signature::make(1 /* min outputs */,
                                                 1 /*max outputs */,
@@ -80,17 +125,12 @@ namespace gr {
 
       d_packet_buffer.resize(9000);
       this->set_output_multiple(9000);
-      d_unpack_idx_size = bit_depth == 8 ? 1 : 2;
-
-      d_unpacker = unpack_16<T>;
-      if(d_unpack_idx_size == 1)
-          d_unpacker = &unpack_8<T>;
 
       this->message_port_register_out(pmt::intern("pck_n"));
     }
 
-    template <class T>
-    difi_source_cpp_impl<T>::~difi_source_cpp_impl()
+    template <class T, class S>
+    difi_source_cpp_impl<T, S>::~difi_source_cpp_impl()
     {
       if(p_tcpserver)
         delete p_tcpserver;
@@ -99,8 +139,8 @@ namespace gr {
         delete p_udpsocket;
     }
 
-    template <class T>
-    int difi_source_cpp_impl<T>::work(int noutput_items,
+    template <class T, class S>
+    int difi_source_cpp_impl<T, S>::work(int noutput_items,
                               gr_vector_const_void_star &input_items,
                               gr_vector_void_star &output_items)
     {
@@ -108,8 +148,8 @@ namespace gr {
       return buffer_and_send(out, noutput_items);
     }
 
-    template <class T>
-    int difi_source_cpp_impl<T>::buffer_and_send(T *out, int noutput_items)
+    template <class T, class S>
+    int difi_source_cpp_impl<T, S>::buffer_and_send(T *out, int noutput_items)
     {
       boost::this_thread::disable_interruption disable_interrupt;
       int size_gotten = -1;
@@ -143,7 +183,7 @@ namespace gr {
         return 0;
       }
 
-      if (size_gotten % (d_unpack_idx_size * 2) != 0)
+      if (size_gotten % sizeof(S) != 0)
       {
         GR_LOG_WARN(this->d_logger, "got a packet which is not divisible by the number bytes per sample, samples will be lost. Check your bit depth configuration.");
       }
@@ -171,8 +211,8 @@ namespace gr {
 
       if (header.type == 1 and d_send) // one is a data packet (see DIFI spec)
       {
-        uint32_t items_written = 0;
-        int out_items = std::min((size_gotten - static_cast<int>(difi::DATA_START_IDX)) / 2, noutput_items);
+        const int out_items = std::min((size_gotten - static_cast<int>(difi::DATA_START_IDX)) / sizeof(S),
+                                       static_cast<size_t>(noutput_items));
         d_last_pkt_n = header.pkt_n;
         if (d_context != NULL)
         {
@@ -180,15 +220,8 @@ namespace gr {
           d_context = NULL;
         }
 
-        uint32_t idx = difi::DATA_START_IDX; //start after the data header
-        while (items_written < out_items and idx < size_gotten)
-        {
-          T sample = d_unpacker(&d_packet_buffer[idx]);
-          out[items_written] = sample;
-          idx += 2 * d_unpack_idx_size;
-          items_written++;
-        }
-        return items_written;
+        unpack_samples(out, reinterpret_cast<const S*>(&d_packet_buffer[difi::DATA_START_IDX]), out_items);
+        return out_items;
       }
       else
       {
@@ -197,8 +230,8 @@ namespace gr {
       }
     }
 
-    template <class T>
-    void difi_source_cpp_impl<T>::parse_header(header_data &data)
+    template <class T, class S>
+    void difi_source_cpp_impl<T, S>::parse_header(header_data &data)
     {
       auto header = unpack_u32(&d_packet_buffer[0]);
       auto stream_number = unpack_u32(&d_packet_buffer[4]);
@@ -221,8 +254,8 @@ namespace gr {
       }
     }
 
-    template <class T>
-    pmt::pmt_t difi_source_cpp_impl<T>::make_pkt_n_dict(int pkt_n, int size_gotten)
+    template <class T, class S>
+    pmt::pmt_t difi_source_cpp_impl<T, S>::make_pkt_n_dict(int pkt_n, int size_gotten)
     {
       pmt::pmt_t dict = pmt::make_dict();
       auto full = unpack_u32(&d_packet_buffer[16]);
@@ -234,8 +267,8 @@ namespace gr {
       return dict;
     }
 
-    template <class T>
-    pmt::pmt_t difi_source_cpp_impl<T>::make_context_dict(header_data &header, int size_gotten)
+    template <class T, class S>
+    pmt::pmt_t difi_source_cpp_impl<T, S>::make_context_dict(header_data &header, int size_gotten)
     {
       pmt::pmt_t pmt_dict = pmt::make_dict();
       context_packet context;
@@ -313,7 +346,7 @@ namespace gr {
         GR_LOG_WARN(this->d_logger, error_string);
       }
       auto r_bit_depth = (context.payload_format >> 32 & 0x0000001f) + 1;
-      if (size_gotten != 44 and (r_bit_depth != d_unpack_idx_size * 8 or (size_gotten != 108 and size_gotten != 72 and size_gotten != 84)))
+      if (size_gotten != 44 and (r_bit_depth != sizeof(S) * 8 / 2 or (size_gotten != 108 and size_gotten != 72 and size_gotten != 84)))
       {
         std::string error_string = size_gotten == 108 or size_gotten == 72 ?
                                     "The context packet bit depth does not match the input bit depth, check your configuration.\nContext packet bit depth is: " + std::to_string(r_bit_depth) :
@@ -330,8 +363,8 @@ namespace gr {
       return pmt_dict;
     }
 
-    template <class T>
-    void difi_source_cpp_impl<T>::unpack_context_alt(context_packet &context)
+    template <class T, class S>
+    void difi_source_cpp_impl<T, S>::unpack_context_alt(context_packet &context)
     {
       int idx = 0;
       context.class_id = unpack_u64(&d_packet_buffer[difi::CONTEXT_PACKET_ALT_OFFSETS[idx++]]);
@@ -344,8 +377,8 @@ namespace gr {
       context.state_indicators = unpack_u32(&d_packet_buffer[difi::CONTEXT_PACKET_ALT_OFFSETS[idx++]]);
       context.payload_format = unpack_u64(&d_packet_buffer[difi::CONTEXT_PACKET_ALT_OFFSETS[idx++]]);
     }
-    template <class T>
-    void difi_source_cpp_impl<T>::unpack_context(context_packet &context)
+    template <class T, class S>
+    void difi_source_cpp_impl<T, S>::unpack_context(context_packet &context)
     {
       int idx = 0;
       context.class_id = unpack_u64(&d_packet_buffer[difi::CONTEXT_PACKET_OFFSETS[idx++]]);
@@ -367,8 +400,8 @@ namespace gr {
       context.state_indicators = unpack_u32(&d_packet_buffer[difi::CONTEXT_PACKET_OFFSETS[idx++]]);
       context.payload_format = unpack_u64(&d_packet_buffer[difi::CONTEXT_PACKET_OFFSETS[idx++]]);
     }
-    template <class T>
-    void difi_source_cpp_impl<T>::unpack_context_kratos_snnb(context_packet &context)
+    template <class T, class S>
+    void difi_source_cpp_impl<T, S>::unpack_context_kratos_snnb(context_packet &context)
     {
       int idx = 0;
       context.class_id = unpack_u64(&d_packet_buffer[difi::CONTEXT_PACKET_KRATOS_SNNB_OFFSETS[idx++]]);
@@ -392,8 +425,9 @@ namespace gr {
       context.payload_format = unpack_u64(&d_packet_buffer[difi::CONTEXT_PACKET_KRATOS_SNNB_OFFSETS[idx]]);
     }
 
-    template class difi_source_cpp<gr_complex>;
-    template class difi_source_cpp<std::complex<char>>;
-
+    template class difi_source_cpp<gr_complex, std::complex<int16_t>>;
+    template class difi_source_cpp<gr_complex, std::complex<int8_t>>;
+    template class difi_source_cpp<std::complex<int8_t>, std::complex<int16_t>>;
+    template class difi_source_cpp<std::complex<int8_t>, std::complex<int8_t>>;
   } /* namespace difi */
 } /* namespace gr */
