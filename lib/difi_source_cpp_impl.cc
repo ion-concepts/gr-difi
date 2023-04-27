@@ -195,18 +195,18 @@ namespace gr {
         GR_LOG_WARN(this->d_logger, "got wrong stream number, " + std::to_string(header.stream_num) + " expected " + std::to_string(d_stream_number));
         return 0;
       }
-      if (header.type == 1 and d_last_pkt_n != -1 and (d_last_pkt_n + 1) % VITA_PKT_MOD != header.pkt_n)
+      if (header.type == 1 and
+          ((d_last_pkt_n != -1 and (d_last_pkt_n + 1) % VITA_PKT_MOD != header.pkt_n))
+          or (d_last_pkt_n == -1 and header.type == 1))
       {
-        GR_LOG_WARN(this->d_logger, "got an out of order packet, " + std::to_string(header.pkt_n) +  " expected " + std::to_string((d_last_pkt_n + 1) % VITA_PKT_MOD));
+        if (d_last_pkt_n != -1) {
+          GR_LOG_WARN(this->d_logger, "got an out of order packet, " + std::to_string(header.pkt_n) +  " expected " + std::to_string((d_last_pkt_n + 1) % VITA_PKT_MOD));
+        }
         const auto pck_n_dict = make_pkt_n_dict(header.pkt_n, size_gotten);
-        this->add_item_tag(0, this->nitems_written(0), pmt::intern("pck_n"), pck_n_dict);
-        this->message_port_pub(pmt::intern("pck_n"), pck_n_dict);
-      }
-      if (d_last_pkt_n == -1 and header.type == 1)
-      {
-        const auto pck_n_dict = make_pkt_n_dict(header.pkt_n, size_gotten);
-        this->add_item_tag(0, this->nitems_written(0), pmt::intern("pck_n"), pck_n_dict);
-        this->message_port_pub(pmt::intern("pck_n"), pck_n_dict);
+        const auto offset = this->nitems_written(0);
+        this->add_item_tag(0, offset, pmt::intern("pck_n"), pck_n_dict);
+        const auto pck_n_msg = pmt::dict_add(pck_n_dict, pmt::intern("offset"), pmt::from_uint64(offset));
+        this->message_port_pub(pmt::intern("pck_n"), pck_n_msg);
       }
 
       if (header.type == 1 and d_send) // one is a data packet (see DIFI spec)
