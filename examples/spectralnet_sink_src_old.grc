@@ -33,6 +33,46 @@ options:
     state: enabled
 
 blocks:
+- name: blocks_multiply_const_vxx_0
+  id: blocks_multiply_const_vxx
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: "Scale output by 1/128 because \nSpectralNet/DIFI Source fails to normalize\
+      \ to +1/-1"
+    const: 1/128
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    type: complex
+    vlen: '1'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [1352, 596.0]
+    rotation: 0
+    state: true
+- name: blocks_null_source_0
+  id: blocks_null_source
+  parameters:
+    affinity: ''
+    alias: ''
+    bus_structure_source: '[[0,],]'
+    comment: 'Padding stream of zero''s used when
+
+      input stream is idle.'
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    num_outputs: '1'
+    type: complex
+    vlen: '1'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [392, 48.0]
+    rotation: 0
+    state: disabled
 - name: difi_sink_cpp_0
   id: difi_sink_cpp
   parameters:
@@ -130,6 +170,49 @@ blocks:
     coordinate: [792, 256.0]
     rotation: 0
     state: true
+- name: lr_wpan_baz_merge_0
+  id: lr_wpan_baz_merge
+  parameters:
+    additional_streams: '2'
+    affinity: ''
+    alias: ''
+    comment: "\"baz_merge\" allows an intermittant bursty stream to \ninterupt (or\
+      \ be padded by) a continious stream"
+    drop_residual: 'True'
+    ignore_tag: ''
+    item_size: complex
+    length_tag: packet_len
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    samp_rate: samp_rate
+    verbose: 'True'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [632, 36.0]
+    rotation: 0
+    state: disabled
+- name: lr_wpan_burst_to_stream_0
+  id: lr_wpan_burst_to_stream
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: "Burst_to_Stream zero fills between Bursts (Packets) \nsince there is\
+      \ no burst support in the SNNB."
+    len_tag_key: '"packet_len"'
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    propagate_tags: 'False'
+    type: complex
+    vlen: '1'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [424, 244.0]
+    rotation: 0
+    state: bypassed
 - name: pad_sink_0
   id: pad_sink
   parameters:
@@ -205,7 +288,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [472, 140.0]
+    coordinate: [320, 164.0]
     rotation: 0
     state: enabled
 - name: rx_ip_addr
@@ -295,12 +378,17 @@ blocks:
     state: true
 
 connections:
+- [blocks_multiply_const_vxx_0, '0', pad_sink_0_0_0, '0']
+- [blocks_null_source_0, '0', lr_wpan_baz_merge_0, '0']
 - [difi_source_cpp_0, '0', difi_synchronize_0, '1']
 - [difi_source_cpp_0, '0', pad_sink_0_0, '0']
-- [difi_source_cpp_0_0, '0', pad_sink_0_0_0, '0']
+- [difi_source_cpp_0_0, '0', blocks_multiply_const_vxx_0, '0']
 - [difi_synchronize_0, '0', difi_sink_cpp_0, '0']
 - [difi_synchronize_0, '0', pad_sink_0, '0']
-- [pad_source_0, '0', difi_synchronize_0, '0']
+- [lr_wpan_baz_merge_0, '0', difi_synchronize_0, '0']
+- [lr_wpan_burst_to_stream_0, '0', difi_synchronize_0, '0']
+- [pad_source_0, '0', lr_wpan_baz_merge_0, '1']
+- [pad_source_0, '0', lr_wpan_burst_to_stream_0, '0']
 
 metadata:
   file_format: 1

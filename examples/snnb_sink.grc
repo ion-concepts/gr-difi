@@ -11,7 +11,7 @@ options:
     gen_linking: dynamic
     generate_options: hb
     hier_block_src_path: '.:'
-    id: spectralnet_sink_src
+    id: snnb_sink
     max_nouts: '0'
     output_language: python
     placement: (0,0)
@@ -22,7 +22,7 @@ options:
     run_options: prompt
     sizing_mode: fixed
     thread_safe_setters: ''
-    title: SpectralNet Sink and Source
+    title: SNNB Sink
     window_size: (1000,1000)
   states:
     bus_sink: false
@@ -39,15 +39,14 @@ blocks:
     affinity: ''
     alias: ''
     bit_depth: '8'
-    comment: "SNNB sends TX stream, rate controlled by RX. \nWe need enough data buffered\
-      \ at the SNNB to \nbuffer any transport jitter so no underflows occur."
+    comment: ''
     context_pack_size: '84'
     context_packet_send_count: '1000'
     data_size: '722'
     if_gain_dB: '0'
-    ip_addr: tx_ip_addr
+    ip_addr: ip_addr
     mode: 'True'
-    port: tx_port
+    port: port
     protocol: '2'
     reference_time_frac: '0'
     reference_time_full: '0'
@@ -59,7 +58,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [1240, 172.0]
+    coordinate: [1088, 284.0]
     rotation: 0
     state: enabled
 - name: difi_source_cpp_0
@@ -68,16 +67,12 @@ blocks:
     affinity: ''
     alias: ''
     bit_depth: '8'
-    comment: "SNNB RX sources a sample a sample stream of identical \nrate to the\
-      \ TX stream becasue they share the same clock reference.\nSample data is to\
-      \ be discarded but interleaved context extension \npackets can be turned into\
-      \ GR tags and used to gerenate the expected\ncontext extension packets on the\
-      \ RX stream."
+    comment: ''
     context_behavior: '0'
-    ip_addr: tx_ip_addr
+    ip_addr: ip_addr
     maxoutbuf: '0'
     minoutbuf: '0'
-    port: tx_port
+    port: port
     protocol: '2'
     stream_num: '0'
     type: complex
@@ -85,31 +80,9 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [48, 420.0]
+    coordinate: [80, 308.0]
     rotation: 0
     state: true
-- name: difi_source_cpp_0_0
-  id: difi_source_cpp
-  parameters:
-    affinity: ''
-    alias: ''
-    bit_depth: '8'
-    comment: SNWB is support in VITA49.2 by DIFI Source so can use as-is.
-    context_behavior: '0'
-    ip_addr: rx_ip_addr
-    maxoutbuf: '0'
-    minoutbuf: '0'
-    port: rx_port
-    protocol: '2'
-    stream_num: '0'
-    type: complex
-  states:
-    bus_sink: false
-    bus_source: false
-    bus_structure: null
-    coordinate: [944, 460.0]
-    rotation: 0
-    state: enabled
 - name: difi_synchronize_0
   id: difi_synchronize
   parameters:
@@ -127,7 +100,24 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [792, 256.0]
+    coordinate: [720, 320.0]
+    rotation: 0
+    state: true
+- name: ip_addr
+  id: parameter
+  parameters:
+    alias: ''
+    comment: ''
+    hide: none
+    label: IP Address
+    short_id: ''
+    type: str
+    value: 192.168.10.20
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [296, 12.0]
     rotation: 0
     state: true
 - name: pad_sink_0
@@ -145,7 +135,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [1224, 52.0]
+    coordinate: [992, 172.0]
     rotation: 0
     state: true
 - name: pad_sink_0_0
@@ -153,29 +143,9 @@ blocks:
   parameters:
     affinity: ''
     alias: ''
-    comment: 'rx_pace_out port streams received samples
-
-      with tags from SNNB using VITA49.0.'
-    label: rx_rate_out
-    num_streams: '1'
-    optional: 'True'
-    type: complex
-    vlen: '1'
-  states:
-    bus_sink: false
-    bus_source: false
-    bus_structure: null
-    coordinate: [672, 524.0]
-    rotation: 0
-    state: true
-- name: pad_sink_0_0_0
-  id: pad_sink
-  parameters:
-    affinity: ''
-    alias: ''
     comment: 'rx_out port streams received samples
 
-      with tags from SNWB using VITA49.2.'
+      with tags from VITA49.0.'
     label: rx_out
     num_streams: '1'
     optional: 'True'
@@ -185,7 +155,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [1480, 484.0]
+    coordinate: [608, 540.0]
     rotation: 0
     state: true
 - name: pad_source_0
@@ -205,41 +175,24 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [472, 140.0]
+    coordinate: [368, 156.0]
     rotation: 0
     state: enabled
-- name: rx_ip_addr
+- name: port
   id: parameter
   parameters:
     alias: ''
     comment: ''
     hide: none
-    label: RX IP Address
-    short_id: ''
-    type: str
-    value: 192.168.40.20
-  states:
-    bus_sink: false
-    bus_source: false
-    bus_structure: null
-    coordinate: [16, 220.0]
-    rotation: 0
-    state: true
-- name: rx_port
-  id: parameter
-  parameters:
-    alias: ''
-    comment: ''
-    hide: none
-    label: RX Port
+    label: Port
     short_id: ''
     type: intx
-    value: '50001'
+    value: '50000'
   states:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [152, 220.0]
+    coordinate: [424, 12.0]
     rotation: 0
     state: true
 - name: samp_rate
@@ -256,48 +209,13 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [192, 12.0]
-    rotation: 0
-    state: true
-- name: tx_ip_addr
-  id: parameter
-  parameters:
-    alias: ''
-    comment: ''
-    hide: none
-    label: TX IP Address
-    short_id: ''
-    type: str
-    value: 192.168.10.20
-  states:
-    bus_sink: false
-    bus_source: false
-    bus_structure: null
-    coordinate: [16, 116.0]
-    rotation: 0
-    state: true
-- name: tx_port
-  id: parameter
-  parameters:
-    alias: ''
-    comment: ''
-    hide: none
-    label: TX Port
-    short_id: ''
-    type: intx
-    value: '50000'
-  states:
-    bus_sink: false
-    bus_source: false
-    bus_structure: null
-    coordinate: [152, 116.0]
+    coordinate: [176, 12.0]
     rotation: 0
     state: true
 
 connections:
 - [difi_source_cpp_0, '0', difi_synchronize_0, '1']
 - [difi_source_cpp_0, '0', pad_sink_0_0, '0']
-- [difi_source_cpp_0_0, '0', pad_sink_0_0_0, '0']
 - [difi_synchronize_0, '0', difi_sink_cpp_0, '0']
 - [difi_synchronize_0, '0', pad_sink_0, '0']
 - [pad_source_0, '0', difi_synchronize_0, '0']
