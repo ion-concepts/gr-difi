@@ -1,0 +1,43 @@
+id: difi_synchronize
+label: Synchronize
+category: '[DIFI]'
+
+templates:
+  imports: import difi
+  make: difi.synchronize(${type.size}*${vlen}, ${share_tags})
+
+parameters:
+- id: type
+  label: IO Type
+  dtype: enum
+  options: [complex, float, int, short, byte]
+  option_attributes:
+      size: [gr.sizeof_gr_complex, gr.sizeof_float, gr.sizeof_int,
+          gr.sizeof_short, gr.sizeof_char]
+  hide: part
+- id: share_tags
+  label: Share tags
+  dtype: bool
+  default: False
+- id: vlen
+  label: Vector Length
+  dtype: int
+  default: '1'
+  hide: ${ 'part' if vlen == 1 else 'none' }
+
+inputs:
+- label: in
+  domain: stream
+  dtype: ${ type }
+  vlen: ${ vlen }
+- label: synchro
+  domain: stream
+  dtype: ${ type }
+  vlen: ${ vlen }
+
+outputs:
+- domain: stream
+  dtype: ${ type }
+  vlen: ${ vlen }
+
+file_format: 1

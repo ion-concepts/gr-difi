@@ -12,5 +12,6 @@
 install(FILES
     api.h
     difi_source_cpp.h
-    difi_sink_cpp.h DESTINATION include/difi
+    difi_sink_cpp.h
+    synchronize.h DESTINATION include/difi
 )

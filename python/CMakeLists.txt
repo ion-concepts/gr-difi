@@ -53,3 +53,4 @@ include(GrTest)
 
 set(GR_TEST_TARGET_DEPS gnuradio-difi)
 GR_ADD_TEST(qa_difi_blocks_cpp ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/qa_difi_blocks_cpp.py)
+GR_ADD_TEST(qa_synchronize ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/qa_synchronize.py)

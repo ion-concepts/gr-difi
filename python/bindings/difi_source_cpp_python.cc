@@ -15,11 +15,11 @@ namespace py = pybind11;
 #include <difi_source_cpp_pydoc.h>
 
 
-template <typename T>
+template <typename T, typename S>
 void bind_difi_source_cpp_template(py::module& m, const char* classname)
 {
 
-    using difi_source_cpp    = ::gr::difi::difi_source_cpp<T>;
+    using difi_source_cpp    = ::gr::difi::difi_source_cpp<T, S>;
 
 
     py::class_<difi_source_cpp, gr::sync_block, gr::block, gr::basic_block,
@@ -30,7 +30,6 @@ void bind_difi_source_cpp_template(py::module& m, const char* classname)
            py::arg("port"),
            py::arg("protocol"),
            py::arg("stream_number"),
-           py::arg("bit_depth"),
            py::arg("context_pkt_behavior"),
            D(difi_source_cpp,make)
         );
@@ -38,14 +37,8 @@ void bind_difi_source_cpp_template(py::module& m, const char* classname)
 
 void bind_difi_source_cpp(py::module& m)
 {
-    bind_difi_source_cpp_template<gr_complex>(m, "difi_source_cpp_fc32");
-    bind_difi_source_cpp_template<std::complex<char>>(m, "difi_source_cpp_sc8");
+    bind_difi_source_cpp_template<gr_complex, std::complex<int16_t>>(m, "difi_source_cpp_sc16_fc32");
+    bind_difi_source_cpp_template<gr_complex, std::complex<int8_t>>(m, "difi_source_cpp_sc8_fc32");
+    bind_difi_source_cpp_template<std::complex<int8_t>, std::complex<int16_t>>(m, "difi_source_cpp_sc16_sc8");
+    bind_difi_source_cpp_template<std::complex<int8_t>, std::complex<int8_t>>(m, "difi_source_cpp_sc8_sc8");
 }
-
-
-
-
-
-
-
-

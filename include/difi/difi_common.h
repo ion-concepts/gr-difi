@@ -19,10 +19,13 @@ namespace gr {
   static const u_int64_t PICO_CONVERSION = 1000000000000U;
   static const uint16_t CONTEXT_PACKET_OFFSETS[16] = {8, 16, 20, 28, 32, 36, 44, 52, 60, 68, 72, 76, 84, 92, 96, 100};
   static const uint16_t CONTEXT_PACKET_ALT_OFFSETS[9] = {8, 16, 20, 28, 36, 44, 52, 60, 64};
+  static const uint16_t CONTEXT_PACKET_KRATOS_SNNB_OFFSETS[12] = {8, 16, 20, 28, 32, 40, 48, 56, 60, 64, 72, 76};
   static const u_int64_t EIGHT_BIT_SIGNED_CART_LINK_EFF = 0xa00003c700000000U;
   static const u_int64_t SIXTEEN_BIT_SIGNED_CART_LINK_EFF = 0xa00007cf00000000U;
+  static const u_int64_t EIGHT_BIT_SIGNED_CART_LINK_EFF_SNNB = 0xa00001c700000000U;
   static const u_int32_t DATA_START_IDX = 28;
   static const u_int64_t DEFAULT_STATE_AND_EVENTS = 2685009920U;
+  static const u_int64_t DEFAULT_STATE_AND_EVENTS_KRATOS_SNNB = 2684485632U;
   } // namespace difi
 } // namespace gr
 

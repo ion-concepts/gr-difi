@@ -8,10 +8,9 @@ label: DIFI Sink
 category: '[DIFI]'
 templates:
   imports: import difi
-  make: difi.difi_sink_cpp_${type.fcn}(${reference_time_full}, ${reference_time_frac}, ${ip_addr}, ${port}, ${protocol}, bool(${mode}),
+  make: difi.difi_sink_cpp_${bit_depth.fcn}_${type.fcn}(${reference_time_full}, ${reference_time_frac}, ${ip_addr}, ${port}, ${protocol}, bool(${mode}),
                                                        ${data_size}, ${stream_id}, ${sample_rate},
-                                                       ${context_packet_send_count}, int(${context_pack_size}), int(${bit_depth}), int(${scaling}), ${gain},
-                                                       ${offset}, ${max_iq}, ${min_iq})
+                                                       ${context_packet_send_count}, int(${context_pack_size}), ${rf_gain_dB}, ${if_gain_dB})
 
 parameters:
 - id: type
@@ -29,6 +28,8 @@ parameters:
   label: Bit Depth
   dtype: enum
   options: ['8', '16']
+  option_attributes:
+      fcn: [sc8, sc16]
   default: '8'
 - id: ip_addr
   label: Forwarding IP Address
@@ -73,40 +74,19 @@ parameters:
 - id: context_pack_size
   label: The context packet size in bytes
   dtype: enum
-  options: ['72', '108']
+  options: ['72', '84', '108']
   default: '108'
   hide: ${ ('all' if mode == 'True' else 'none') }
-- id: scaling
-  category: Scaling
-  label: Scaling Mode
-  dtype: enum
-  options: ['0', '1', '2']
-  option_labels: ['None', 'Manual', 'Min-Max']
-  default: '2'
-- id: gain
-  category: Scaling
-  label: Gain
+- id: rf_gain_dB
+  label: RF Gain
   dtype: real
-  default: 1.0
-  hide: ${ ('none' if scaling == '1' else 'all') }
-- id: offset
-  category: Scaling
-  label: Complex Offset
-  dtype: complex
-  default: 0
-  hide: ${ ('none' if scaling == '1' else 'all') }
-- id: max_iq
-  category: Scaling
-  label: Max IQ Value
+  default: 14.2
+  hide: ${ ('all' if mode == 'True' else 'none') }
+- id: if_gain_dB
+  label: IF Gain
   dtype: real
-  default: 1.0
-  hide: ${ ('none' if scaling == '2' else 'all') }
-- id: min_iq
-  category: Scaling
-  label: Min IQ Value
-  dtype: real
-  default: -1.0
-  hide: ${ ('none' if scaling == '2' else 'all') }
+  default: -1.3
+  hide: ${ ('all' if mode == 'True' else 'none') }  
 inputs:
 - label: in
   domain: stream
@@ -157,20 +137,5 @@ documentation: |-
 
      bit_depth:
      The bit depth
-
-     scaling:
-     The scaling mode
-
-     gain:
-     In manual scaling mode, gain applied to signal
-
-     offset:
-     In manual scaling mode, complex offset added to signal
-
-     max_iq:
-     In Min-Max scaling mode, expectd maximum value of I or Q ie. Max(Max(I),Max(Q))
-
-     min_iq:
-     In Min-Max scaling mode, expectd minimum value of I or Q ie. Min(Min(I),Min(Q))
 
 file_format: 1

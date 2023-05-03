@@ -9,21 +9,24 @@
 
 #include <difi/api.h>
 #include <gnuradio/sync_block.h>
+#include <cstdint>
 
 namespace gr {
   namespace difi {
 
-    template <class T>
+    template <class T, class S>
     class DIFI_API difi_source_cpp : virtual public gr::sync_block
     {
      public:
-      typedef std::shared_ptr<difi_source_cpp<T>> sptr;
+      typedef std::shared_ptr<difi_source_cpp<T, S>> sptr;
 
-      static sptr make(std::string ip_addr, uint32_t port, uint8_t socket_type, int stream_number, int bit_depth, int context_pkt_behavior);
+      static sptr make(std::string ip_addr, uint32_t port, uint8_t socket_type, int stream_number, int context_pkt_behavior);
 
     };
-    typedef difi_source_cpp<gr_complex> difi_source_cpp_fc32;
-    typedef difi_source_cpp<std::complex<char>> difi_source_cpp_sc8;
+    typedef difi_source_cpp<gr_complex, std::complex<int16_t>> difi_source_cpp_sc16_fc32;
+    typedef difi_source_cpp<gr_complex, std::complex<int8_t>> difi_source_cpp_sc8_fc32;
+    typedef difi_source_cpp<std::complex<int8_t>, std::complex<int16_t>> difi_source_cpp_sc16_sc8;
+    typedef difi_source_cpp<std::complex<int8_t>, std::complex<int8_t>> difi_source_cpp_sc8_sc8;
 
   } // namespace difi
 } // namespace gr
