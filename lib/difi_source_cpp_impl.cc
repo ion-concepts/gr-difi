@@ -258,12 +258,19 @@ namespace gr {
     pmt::pmt_t difi_source_cpp_impl<T, S>::make_pkt_n_dict(int pkt_n, int size_gotten)
     {
       pmt::pmt_t dict = pmt::make_dict();
-      auto full = unpack_u32(&d_packet_buffer[16]);
-      auto frac = unpack_u64(&d_packet_buffer[20]);
+      // Ignore DIFI timestamp in packet and make our own using the UNIX system time
+      //auto full = unpack_u32(&d_packet_buffer[16]);
+      //auto frac = unpack_u64(&d_packet_buffer[20]);
+      struct timespec t = {0};
+      if (clock_gettime(CLOCK_REALTIME, &t) < 0) {
+        GR_LOG_ERROR(this->d_logger, "clock_gettime() returned an error");
+      }
       dict = pmt::dict_add(dict, pmt::intern("pck_n"), pmt::from_uint64((u_int64_t)pkt_n));
       dict = pmt::dict_add(dict, pmt::intern("data_len"), pmt::from_uint64(size_gotten));
-      dict = pmt::dict_add(dict, pmt::intern("full"), pmt::from_long(full));
-      dict = pmt::dict_add(dict, pmt::intern("frac"), pmt::from_uint64(frac));
+      dict = pmt::dict_add(dict, pmt::intern("full"), pmt::from_long(t.tv_sec));
+      // Frac is in picosecond units
+      dict = pmt::dict_add(dict, pmt::intern("frac"),
+                           pmt::from_uint64(static_cast<uint64_t>(t.tv_nsec) * static_cast<uint64_t>(1000)));
       return dict;
     }
 
