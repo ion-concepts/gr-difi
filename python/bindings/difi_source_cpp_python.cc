@@ -31,6 +31,7 @@ void bind_difi_source_cpp_template(py::module& m, const char* classname)
            py::arg("protocol"),
            py::arg("stream_number"),
            py::arg("context_pkt_behavior"),
+           py::arg("timestamp_source"),
            D(difi_source_cpp,make)
         );
 }

@@ -90,13 +90,13 @@ namespace gr {
     }
 
     template <class T, class S>
-    typename difi_source_cpp<T, S>::sptr difi_source_cpp<T, S>::make(std::string ip_addr, uint32_t port, uint8_t socket_type, int stream_number, int context_pkt_behavior)
+    typename difi_source_cpp<T, S>::sptr difi_source_cpp<T, S>::make(std::string ip_addr, uint32_t port, uint8_t socket_type, int stream_number, int context_pkt_behavior, enum difi_timestamp_source timestamp_source)
     {
-      return gnuradio::make_block_sptr<difi_source_cpp_impl<T, S>>(ip_addr, port, socket_type, stream_number, context_pkt_behavior);
+      return gnuradio::make_block_sptr<difi_source_cpp_impl<T, S>>(ip_addr, port, socket_type, stream_number, context_pkt_behavior, timestamp_source);
     }
 
     template <class T, class S>
-    difi_source_cpp_impl<T, S>::difi_source_cpp_impl(std::string ip_addr, uint32_t port, uint8_t socket_type, int stream_number, int context_pkt_behavior)
+    difi_source_cpp_impl<T, S>::difi_source_cpp_impl(std::string ip_addr, uint32_t port, uint8_t socket_type, int stream_number, int context_pkt_behavior, enum difi_timestamp_source timestamp_source)
         : gr::sync_block("source_cpp", gr::io_signature::make(0, 0, 0),
                          gr::io_signature::make(1 /* min outputs */,
                                                 1 /*max outputs */,
@@ -108,7 +108,8 @@ namespace gr {
           d_last_pkt_n(-1),
           d_static_bits(-1),
           p_tcpserver(NULL),
-          p_udpsocket(NULL)
+          p_udpsocket(NULL),
+          d_timestamp_source(timestamp_source)
 
     {
 
@@ -258,19 +259,50 @@ namespace gr {
     pmt::pmt_t difi_source_cpp_impl<T, S>::make_pkt_n_dict(int pkt_n, int size_gotten)
     {
       pmt::pmt_t dict = pmt::make_dict();
-      // Ignore DIFI timestamp in packet and make our own using the UNIX system time
-      //auto full = unpack_u32(&d_packet_buffer[16]);
-      //auto frac = unpack_u64(&d_packet_buffer[20]);
+      uint64_t full;
+      uint64_t frac;
       struct timespec t = {0};
-      if (clock_gettime(CLOCK_REALTIME, &t) < 0) {
-        GR_LOG_ERROR(this->d_logger, "clock_gettime() returned an error");
+      switch (d_timestamp_source) {
+      case DIFI_TIMESTAMP_SIGNAL_PACKET:
+        full = unpack_u32(&d_packet_buffer[16]);
+        frac = unpack_u64(&d_packet_buffer[20]);
+        break;
+      case DIFI_TIMESTAMP_SYSTEM_CLOCK:
+        if (clock_gettime(CLOCK_REALTIME, &t) < 0) {
+          GR_LOG_ERROR(this->d_logger, "clock_gettime() returned an error");
+        }
+        full = t.tv_sec;
+        // Frac is in picosecond units
+        frac = static_cast<uint64_t>(t.tv_nsec) * static_cast<uint64_t>(1000);
+        break;
+      case DIFI_TIMESTAMP_MIXED:
+        {
+          frac = unpack_u64(&d_packet_buffer[20]);
+          const uint64_t difi_full = unpack_u32(&d_packet_buffer[16]);
+          if (clock_gettime(CLOCK_REALTIME, &t) < 0) {
+            GR_LOG_ERROR(this->d_logger, "clock_gettime() returned an error");
+          }
+          full = t.tv_sec;
+          // adjust cases when the two timestamps straddle a second boundary
+          const uint64_t clock_frac = static_cast<uint64_t>(t.tv_nsec) * static_cast<uint64_t>(1000);
+          const int64_t frac_diff = static_cast<int64_t>(frac) - static_cast<int64_t>(clock_frac);
+          const int64_t half_second = 500000000000UL;
+          if (frac_diff > half_second) {
+            // system time has moved to the next second already
+            --full;
+          } else if (frac_diff < -half_second) {
+            // packet timestamp has moved to the next second already
+            ++full;
+          }
+        }
+        break;
+      default:
+        abort();
       }
       dict = pmt::dict_add(dict, pmt::intern("pck_n"), pmt::from_uint64((u_int64_t)pkt_n));
       dict = pmt::dict_add(dict, pmt::intern("data_len"), pmt::from_uint64(size_gotten));
-      dict = pmt::dict_add(dict, pmt::intern("full"), pmt::from_long(t.tv_sec));
-      // Frac is in picosecond units
-      dict = pmt::dict_add(dict, pmt::intern("frac"),
-                           pmt::from_uint64(static_cast<uint64_t>(t.tv_nsec) * static_cast<uint64_t>(1000)));
+      dict = pmt::dict_add(dict, pmt::intern("full"), pmt::from_long(full));
+      dict = pmt::dict_add(dict, pmt::intern("frac"), pmt::from_uint64(frac));
       return dict;
     }
 
