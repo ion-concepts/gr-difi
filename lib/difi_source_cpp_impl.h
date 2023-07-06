@@ -97,13 +97,15 @@ private:
     std::deque<char> d_deque;
     tcp_server* p_tcpserver;
     udp_socket* p_udpsocket;
+    const difi_timestamp_source d_timestamp_source;
 
 public:
     difi_source_cpp_impl(std::string ip_addr,
                     uint32_t port,
                     uint8_t socket_type,
                     int stream_number,
-                    int context_pkt_behavior);
+                    int context_pkt_behavior,
+                    enum difi_timestamp_source timestamp_source);
     ~difi_source_cpp_impl();
     int work(int noutput_items,
              gr_vector_const_void_star& input_items,

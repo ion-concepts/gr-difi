@@ -8,7 +8,7 @@ label: DIFI Source
 category: '[DIFI]'
 templates:
   imports: import difi
-  make: difi.difi_source_cpp_${bit_depth.fcn}_${type.fcn}(${ip_addr}, ${port}, ${protocol}, ${stream_num}, int(${context_behavior}))
+  make: difi.difi_source_cpp_${bit_depth.fcn}_${type.fcn}(${ip_addr}, ${port}, ${protocol}, ${stream_num}, int(${context_behavior}), ${timestamp_source})
 
 parameters:
 - id: type
@@ -42,6 +42,12 @@ parameters:
   label: DIFI Stream Number
   dtype: int
   default: 80000
+- id: timestamp_source
+  label: Timestamp Source
+  dtype: enum
+  default: 'Signal Packets'
+  options: ['difi.difi_timestamp_source.DIFI_TIMESTAMP_SIGNAL_PACKET', 'difi.difi_timestamp_source.DIFI_TIMESTAMP_SYSTEM_CLOCK', 'difi.difi_timestamp_source.DIFI_TIMESTAMP_MIXED']
+  option_labels: ['Signal Packets', 'System Clock', 'Mixed Mode']
 - id: context_behavior
   label: Context Mismatch Behavior
   category: DIFI Advanced

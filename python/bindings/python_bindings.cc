@@ -25,6 +25,7 @@ namespace py = pybind11;
     void bind_difi_sink_cpp(py::module& m);
     void bind_difi_source_cpp(py::module& m);
     void bind_difi_sink_cpp(py::module& m);
+    void bind_difi_timestamp_source(py::module& m);
     void bind_synchronize(py::module& m);
 // ) END BINDING_FUNCTION_PROTOTYPES
 
@@ -56,6 +57,7 @@ PYBIND11_MODULE(difi_python, m)
     // BINDING_FUNCTION_CALLS(
     bind_difi_source_cpp(m);
     bind_difi_sink_cpp(m);
+    bind_difi_timestamp_source(m);
     bind_synchronize(m);
     // ) END BINDING_FUNCTION_CALLS
 }
